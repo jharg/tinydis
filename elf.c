@@ -11,6 +11,7 @@
 #include <ctype.h>
 #include <sys/types.h>
 #include <inttypes.h>
+#include <assert.h>
 #include "tinydis.h"
 #include "elf.h"
 
@@ -29,6 +30,10 @@ const char *shtype[] = {
   "REL",
   "SHLIB",
   "DYNSYM",
+  "",
+  "",
+  "INIT_ARRAY",
+  "FINI_ARRAY",
 };
 
 #define cc(a,b) case a##b: return #b;
@@ -252,14 +257,16 @@ void readelf(void *buf, int len)
   elf64_sym  *sym;
   const char *strtab, *symoff;
   int i, j, type, nsym;
+  void **sdata;
 
   if (memcmp(buf, "\x7F" "ELF", 4))
     return;
   fhdr = elf_fhdr(buf, &type);
   phdr = elf_phdr(buf + fhdr->e_phoff, fhdr->e_phnum, type);
   shdr = elf_shdr(buf + fhdr->e_shoff, fhdr->e_shnum, type);
+  assert(fhdr->e_shstrndx < fhdr->e_shnum);
+  
   strtab = buf + shdr[fhdr->e_shstrndx].sh_offset;
-
   printf("type    : %.4lx\n", _l(fhdr->e_type));
   printf("machine : %.4lx\n", _l(fhdr->e_machine));
   printf("version : %.8lx\n", _l(fhdr->e_version));
@@ -283,6 +290,10 @@ void readelf(void *buf, int len)
 	   _l(phdr[i].p_align));
   }
 
+  /* Allocate section data pointers */
+  sdata = alloca(fhdr->e_shnum * sizeof(void *));
+  memset(sdata, 0, fhdr->e_shnum * sizeof(void *));
+  
   printf("======================= Sections\n");
   printf("id  name     type     flags    addr     offset   size     link info addralgn entsize\n");
   for (i = 0; i < fhdr->e_shnum; i++) {
@@ -298,9 +309,27 @@ void readelf(void *buf, int len)
 	   _l(shdr[i].sh_info),
 	   _l(shdr[i].sh_addralign),
 	   _l(shdr[i].sh_entsize),
-	   shdr[i].sh_type <= SHT_DYNSYM ? shtype[shdr[i].sh_type] : "",
+	   shdr[i].sh_type <= SHT_FINI_ARRAY ? shtype[shdr[i].sh_type] : "",
 	   strtab + shdr[i].sh_name);
-    addSection(i, shdr[i].sh_addr, shdr[i].sh_size, buf + shdr[i].sh_offset,
+    /* Convert section contents to ELF64 */
+    sdata[i] = buf + shdr[i].sh_offset;
+    switch (shdr[i].sh_type) {
+    case SHT_SYMTAB:
+    case SHT_DYNSYM:
+      sdata[i] = elf_sym(sdata[i], shdr[i].sh_size / shdr[i].sh_entsize, type);
+      break;
+    case SHT_REL:
+      sdata[i] = elf_rel(sdata[i], shdr[i].sh_size / shdr[i].sh_entsize, type);
+      break;
+    case SHT_RELA:
+      sdata[i] = elf_rel(sdata[i], shdr[i].sh_size / shdr[i].sh_entsize, type);
+      break;
+    case SHT_NULL:
+    case SHT_NOBITS:
+      sdata[i] = NULL;
+      break;
+    }
+    addSection(i, shdr[i].sh_addr, shdr[i].sh_size, sdata[i],
 	       strtab + shdr[i].sh_name,
 	       &shdr[i]);
   }
@@ -308,13 +337,10 @@ void readelf(void *buf, int len)
   /* Show symbols */
   printf("======================= Symbols\n");
   for (i = 0; i < fhdr->e_shnum; i++) {
-    if (!shdr[i].sh_type || shdr[i].sh_type > SHT_DYNSYM)
-      continue;
-    //dump(buf+shdr[i].sh_offset, shdr[i].sh_size);
     if (shdr[i].sh_type == SHT_SYMTAB || shdr[i].sh_type == SHT_DYNSYM) {
       symoff = buf + shdr[shdr[i].sh_link].sh_offset;
       nsym = shdr[i].sh_size / shdr[i].sh_entsize;
-      sym = elf_sym(buf + shdr[i].sh_offset, nsym, type);
+      sym = sdata[i];
 
       printf("Symbols: %s\n", strtab + shdr[i].sh_name);
       qsort(sym, nsym, sizeof(*sym), symcmp);

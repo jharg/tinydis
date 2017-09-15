@@ -37,6 +37,8 @@ enum {
   SHT_REL = 9,
   SHT_SHLIB = 10,
   SHT_DYNSYM = 11,
+  SHT_INIT_ARRAY = 14,
+  SHT_FINI_ARRAY = 15,
 };
 
 enum {
