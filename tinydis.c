@@ -1,3 +1,8 @@
+/* tinydis.c - Disassembler/Emulator
+ *
+ * Copyright (c) 2015-17 Jordan Hargrave<jordan_hargrave@hotmail.com>
+ *
+ */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

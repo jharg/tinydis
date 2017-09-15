@@ -1,3 +1,8 @@
+/* arm.c - ARM Disassembler/Emulator
+ *
+ * Copyright (c) 2015-17 Jordan Hargrave<jordan_hargrave@hotmail.com>
+ *
+ */
 #include <stdio.h>
 #include <stdlib.h>
 #include <inttypes.h>
