@@ -1,6 +1,6 @@
 all: tinydis
 
-ARCHS=arm.c
+ARCHS=arm.c sh4.c
 LOADERS=elf.c ne.c pe.c
 MODULES=
 

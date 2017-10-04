@@ -17,6 +17,9 @@
 
 #define _l(x) (unsigned long)(x)
 
+extern int nsects;
+extern section_t *sectTbl;
+
 const char *shtype[] = {
   "NULL",
   "PROGBITS",
@@ -249,6 +252,36 @@ static elf64_rela *elf_rela(void *buf, int n, int type)
   return e64;
 }
 
+void showrel(int idx)
+{
+  elf64_rel  *r = sectTbl[idx].data;
+  elf64_rela *ra = sectTbl[idx].data;
+  elf64_shdr *shdr = sectTbl[idx].opaque;
+  elf64_sym  *sym;
+  int i, n, id;
+
+  sym = sectTbl[shdr->sh_link].data;
+  printf("--- Reloc %s\n", sectTbl[idx].name);
+  n = shdr->sh_size / shdr->sh_entsize;
+  for (i = 0; i < n; i++) {
+    if (shdr->sh_type == SHT_REL) {
+      id = REL64_SYM(r[i].r_info);
+      printf("Rel: %.8x %.2x %.2x %.8x\n",
+	     r[i].r_addr,
+	     REL64_TYPE(r[i].r_info),
+	     id, sym[id].st_name);
+    }
+    else {
+      id = REL64_SYM(ra[i].r_info);
+      printf("Rela: %.8x %.8x %.2x %.2x %.8x\n",
+	     ra[i].r_offset,
+	     ra[i].r_addend,
+	     REL64_TYPE(ra[i].r_info),
+	     id,sym[id].st_name);
+    }
+  }
+}
+
 void readelf(void *buf, int len)
 {
   elf64_fhdr *fhdr;
@@ -257,7 +290,8 @@ void readelf(void *buf, int len)
   elf64_sym  *sym;
   const char *strtab, *symoff;
   int i, j, type, nsym;
-  void **sdata;
+  section_t **sects;
+  void *data;
 
   if (memcmp(buf, "\x7F" "ELF", 4))
     return;
@@ -291,8 +325,8 @@ void readelf(void *buf, int len)
   }
 
   /* Allocate section data pointers */
-  sdata = alloca(fhdr->e_shnum * sizeof(void *));
-  memset(sdata, 0, fhdr->e_shnum * sizeof(void *));
+  sects = alloca(fhdr->e_shnum * sizeof(section_t *));
+  memset(sects, 0, fhdr->e_shnum * sizeof(section_t *));
   
   printf("======================= Sections\n");
   printf("id  name     type     flags    addr     offset   size     link info addralgn entsize\n");
@@ -312,24 +346,24 @@ void readelf(void *buf, int len)
 	   shdr[i].sh_type <= SHT_FINI_ARRAY ? shtype[shdr[i].sh_type] : "",
 	   strtab + shdr[i].sh_name);
     /* Convert section contents to ELF64 */
-    sdata[i] = buf + shdr[i].sh_offset;
+    data = buf + shdr[i].sh_offset;
     switch (shdr[i].sh_type) {
     case SHT_SYMTAB:
     case SHT_DYNSYM:
-      sdata[i] = elf_sym(sdata[i], shdr[i].sh_size / shdr[i].sh_entsize, type);
+      data = elf_sym(data, shdr[i].sh_size / shdr[i].sh_entsize, type);
       break;
     case SHT_REL:
-      sdata[i] = elf_rel(sdata[i], shdr[i].sh_size / shdr[i].sh_entsize, type);
+      data = elf_rel(data, shdr[i].sh_size / shdr[i].sh_entsize, type);
       break;
     case SHT_RELA:
-      sdata[i] = elf_rel(sdata[i], shdr[i].sh_size / shdr[i].sh_entsize, type);
+      data = elf_rel(data, shdr[i].sh_size / shdr[i].sh_entsize, type);
       break;
     case SHT_NULL:
     case SHT_NOBITS:
-      sdata[i] = NULL;
+      data = NULL;
       break;
     }
-    addSection(i, shdr[i].sh_addr, shdr[i].sh_size, sdata[i],
+    addSection(i, shdr[i].sh_addr, shdr[i].sh_size, data,
 	       strtab + shdr[i].sh_name,
 	       &shdr[i]);
   }
@@ -338,9 +372,9 @@ void readelf(void *buf, int len)
   printf("======================= Symbols\n");
   for (i = 0; i < fhdr->e_shnum; i++) {
     if (shdr[i].sh_type == SHT_SYMTAB || shdr[i].sh_type == SHT_DYNSYM) {
-      symoff = buf + shdr[shdr[i].sh_link].sh_offset;
+      symoff = sectTbl[shdr[i].sh_link].data;
       nsym = shdr[i].sh_size / shdr[i].sh_entsize;
-      sym = sdata[i];
+      sym = sectTbl[i].data;
 
       printf("Symbols: %s\n", strtab + shdr[i].sh_name);
       qsort(sym, nsym, sizeof(*sym), symcmp);
@@ -353,19 +387,28 @@ void readelf(void *buf, int len)
 	       _l(sym[j].st_other),
 	       _l(sym[j].st_shndx),
 	       symoff + sym[j].st_name);
-	if (elf_stt(sym[j].st_info) == STT_FUNC && sym[j].st_shndx < fhdr->e_shnum) {
+	if (elf_stt(sym[j].st_info) == STT_FUNC &&
+	    sym[j].st_shndx < fhdr->e_shnum) {
 	  addSym(sym[j].st_value, 1, &sym[j], symoff + sym[j].st_name);
 	}
       }
     }
   }
 
+  printf("======================= Relocs\n");
+  for (i = 0; i < fhdr->e_shnum; i++) {
+    if (shdr[i].sh_type == SHT_RELA || shdr[i].sh_type == SHT_REL) {
+      showrel(i);
+    }
+  }
+  
   /* Dump code */
   for (i = 0; i < fhdr->e_shnum; i++) {
-    if (!strcmp(strtab + shdr[i].sh_name, ".text")) {
-      dump(buf + shdr[i].sh_offset, 64);
-      parsebb(buf + shdr[i].sh_offset, shdr[i].sh_size,
-	      0x0, shdr[i].sh_addr, (type << 16) | fhdr->e_machine);
+    if (!strcmp(sectTbl[i].name, ".text")) {
+      dump(sectTbl[i].data, 64);
+      parsebb(sectTbl[i].data, sectTbl[i].size,
+	      0x0, shdr[i].sh_addr,
+	      (type << 16) | fhdr->e_machine);
     }
   }
 }

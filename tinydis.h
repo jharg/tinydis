@@ -11,6 +11,12 @@
 #define _put32(x,v) *(uint32_t *)(x) = (v)
 #define _put64(x,v) *(uint64_t *)(x) = (v)
 
+static inline uint16_t _get16be(void *p)
+{
+  uint8_t *b = p;
+  return (b[0] << 8) | b[1];
+}
+
 #define mrr_mm(x)  (((x) >> 6) & 3)
 #define mrr_ggg(x) (((x) >> 3) & 7)
 #define mrr_rrr(x) (((x) >> 0) & 7)
@@ -227,6 +233,7 @@ struct sym
 #define MACH_X86_32  0x10003
 #define MACH_X86_16  0x00003
 #define MACH_ARM     0x10028
+#define MACH_SH4     0x1002a
 
 typedef struct
 {
@@ -325,6 +332,7 @@ struct cpu {
 #define mkTBL(s,m) (((s) << 25) | ((m) << 16))
 #define FLAG_USED  0x1000
 
+uint32_t getoff(struct cpu *cpu);
 uint32_t getpc(struct cpu *cpu);
 void _push(stack_t *stk, int off, const char *lbl);
 int32_t signex32(uint32_t v, int bit);
@@ -363,6 +371,83 @@ enum {
   
   PRINTFSTR  = 0x0300 | CHAR | PTR,
   VARARG     = 0x400,
+};
+
+int mkreg(int size, int reg, int rex);
+int mkimm(struct cpu *cpu, int size, uint64_t immv);
+
+struct emutab {
+  const char *mnem;
+  int hli;
+  int dst;
+  int arg0;
+  int arg1;
+  int arg2;
+};
+
+enum {
+  _a0 = 0xf0f0,
+  _a1 = 0xf0f1,
+  _a2 = 0xf0f2,
+};
+
+#define _mkimm(x) (TYPE_IMMV|SIZE_BYTE|(x))
+
+#define uno(a,x)     (((a) << 24) + (x))
+#define duo(a,x,y)   ((((y) << 8) | uno(a,x)))
+#define tri(a,x,y,z) ((((z) << 6) | duo(a, x, y)))
+
+enum {
+  hliASSIGN = uno(0x9,'='),
+
+  hliADD  = uno(0xa,'+'),
+  hliSUB  = uno(0xa,'-'),
+  hliOR   = uno(0xa,'|'),
+  hliAND  = uno(0xa,'&'),
+  hliMUL  = uno(0xa,'*'),
+  hliDIV  = uno(0xa,'/'),
+  hliMOD  = uno(0xa,'%'),
+  hliXOR  = uno(0xa,'^'),
+  hliLNOT = uno(0xa,'!'),
+  hliNOT  = uno(0xa,'~'),
+  hliSHL  = duo(0xa,'<','<'),
+  hliSHR  = duo(0xb,'>','>'),
+  hliNEG  = duo(0xa,' ','-'),
+  
+  hliTRI   = duo(0xb,'?',':'),
+  hliARRAY = duo(0xb,'[',']'),
+
+  hliPREDEC = duo(0xa, '-','-'),
+  hliPREINC = duo(0xa, '+','+'),
+  hliPOSTDEC= duo(0xb, '-','-'),
+  hliPOSTINC= duo(0xb, '+','+'),
+
+  /* comparison operator */
+  hliLT    = uno(0xc,'<'),
+  hliLTE   = duo(0xc,'<','='),
+  hliEQ    = duo(0xc,'=','='),
+  hliNEQ   = duo(0xc,'!','='),
+  hliGTE   = duo(0xc,'>','='),
+  hliGT    = uno(0xc,'>'),
+
+  /* Signed comparison */
+  hliLTs   = duo(0xc,'<','s'),
+  hliLTEs  = tri(0xc,'<','=','s'),
+  hliGTEs  = tri(0xc,'>','=','s'),
+  hliGTs   = duo(0xc,'>','s'),
+  
+  /* Non-standard HLI ops */
+  hliXCHG  = uno(0xF,0),
+  hliJCC,   // jcc a1 if a0 true, else jcc a2
+  hliSIGNEX,
+  hliINVAL,
+  hliJMP,
+  hliIGNORE,
+
+  hliROR,
+  hliRCR,
+  hliROL,
+  hliRCL,
 };
 
 #endif

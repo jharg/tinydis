@@ -27,7 +27,7 @@
 #define moff(x) ((x) << 8)
 #define __(m,a...)     { .mnem=#m, .args = { a } }
 #define _b(m,a...)     { .mnem=#m, .args = { a }, .flag='b'|moff(3) } /* BYTE size */
-#define _t(t,s,m,a...) { .mnem=#t, .args = { a }, .tbl=t, .flag=mkTBL(s, m), .args = { a } }
+#define _t(t,s,m,a...) { .mnem=#t, .args = { a }, .tbl=t, .flag=mkTBL(s, m) }
 
 /* MNEM
  *  STC{cond}{L:N=1}

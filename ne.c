@@ -154,19 +154,6 @@ static void nereloc(ne_reloc *nr, int n, int bseg, void *base, int len, const ch
 
 #define MKADDR(s,o) (((s) << 4) + (o))
 
-int addSeg(int *segTab, int nseg, int seg)
-{
-  int i;
-
-  seg <<= 4;
-  for (i = 0; i < nseg; i++) {
-    if (segTab[i] == seg)
-      return nseg;
-  }
-  segTab[nseg++] = seg;
-  return nseg;
-}
-
 struct mz_reloc
 {
   uint16_t off;

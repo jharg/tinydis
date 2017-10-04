@@ -18,6 +18,8 @@
 #include "x86.h"
 #include "arm.h"
 
+const char *crarg(int arg);
+
 #define cv(x) ((x) ? (x) : ' ')
 #define ot(x) cv(((x) & TYPE_MASK) >> TYPE_SHIFT), cv(((x) & SIZE_MASK) >> SIZE_SHIFT)
 
@@ -59,58 +61,6 @@ struct machine
 };
 
 int opeq(struct imap *i, const char *op, int arg0, int arg1, int arg2);
-
-#define uno(a,x)     (((a) << 24) + (x))
-#define duo(a,x,y)   ((((y) << 8) | uno(a,x)))
-#define tri(a,x,y,z) ((((z) << 6) | duo(a, x, y)))
-
-enum {
-  hliASSIGN = uno(0x9,'='),
-
-  hliADD  = uno(0xa,'+'),
-  hliSUB  = uno(0xa,'-'),
-  hliOR   = uno(0xa,'|'),
-  hliAND  = uno(0xa,'&'),
-  hliMUL  = uno(0xa,'*'),
-  hliDIV  = uno(0xa,'/'),
-  hliMOD  = uno(0xa,'%'),
-  hliXOR  = uno(0xa,'^'),
-  hliLNOT = uno(0xa,'!'),
-  hliNOT  = uno(0xa,'~'),
-  hliSHL  = duo(0xa,'<','<'),
-  hliSHR  = duo(0xb,'>','>'),
-  hliNEG  = duo(0xa,' ','-'),
-  
-  hliTRI   = duo(0xb,'?',':'),
-  hliARRAY = duo(0xb,'[',']'),
-
-  hliPREDEC = duo(0xa, '-','-'),
-  hliPREINC = duo(0xa, '+','+'),
-  hliPOSTDEC= duo(0xb, '-','-'),
-  hliPOSTINC= duo(0xb, '+','+'),
-
-  /* comparison operator */
-  hliLT    = uno(0xc,'<'),
-  hliLTE   = duo(0xc,'<','='),
-  hliEQ    = duo(0xc,'=','='),
-  hliNEQ   = duo(0xc,'!','='),
-  hliGTE   = duo(0xc,'>','='),
-  hliGT    = uno(0xc,'>'),
-
-  /* Signed comparison */
-  hliLTs   = duo(0xc,'<','s'),
-  hliLTEs  = tri(0xc,'<','=','s'),
-  hliGTEs  = tri(0xc,'>','=','s'),
-  hliGTs   = duo(0xc,'>','s'),
-  
-  /* Non-standard HLI ops */
-  hliXCHG  = uno(0xF,0),
-  hliJCC,   // jcc a1 if a0 true, else jcc a2
-  hliSIGNEX,
-  hliINVAL,
-  hliJMP,
-  hliIGNORE,
-};
 
 void dump(void *buf, int len, const char *sfx, int flag)
 {
@@ -1017,16 +967,16 @@ struct bb *NEXT(struct bb *bb)
 
 struct bb *THEN(struct bb *bb)
 {
-  if (!bb || bb->type != bbCOND)
-    return NULL;
-  return findbb(bb->edge[0]);
+  if (bb && bb->type == bbCOND)
+    return findbb(bb->edge[0]);
+  return NULL;
 }
 
 struct bb *ELSE(struct bb *bb)
 {
-  if (!bb || bb->type != bbCOND)
-    return NULL;
-  return findbb(bb->edge[1]);
+  if (bb && bb->type == bbCOND)
+    return findbb(bb->edge[1]);
+  return NULL;
 }
 
 int IsTerm(struct bb *bb)
@@ -1058,18 +1008,16 @@ int isIfElse(struct bb *t, struct bb *e, int nt, int ne)
 
 int ifv;
 
-void mkif(struct bb *bb, struct bb *sub, char *lbl)
+void mkif(struct bb *bb, struct bb *sub, int nin, char *lbl)
 {
   printf("mkif   : %.8x -> %.8x [%s]\n", bb->start, sub->start, lbl);
   bb->type = bbIF;
   bb->lbl = lbl;
   bb->ifv = ifv;
   if (sub) {
-    sub->nifIn += 2;
+    sub->nifIn += nin;
     printf("  mkif:%d %d\n", sub->nifIn, sub->nIn);
-    if (sub->nifIn > sub->nIn && sub->type == bbFALL) {
-      sub = findbb(sub->edge[0]);
-    }
+    _showbb(sub);
     bb->sub = sub->start;
   }
 }
@@ -1140,6 +1088,12 @@ int IsLoop(struct bb *bb)
  *  if (x && y) { a }
  *  if (x || y) { a }
  */
+int checkLoop(struct bb *bb, int verb)
+{
+  if (!(bb->flags & 0x1000))
+    return 0;
+}
+
 int checkIf(struct bb *bb, int verb)
 {
   struct bb *t, *e, *tt, *te, *et, *ee, *ne, *nt;
@@ -1185,33 +1139,28 @@ int checkIf(struct bb *bb, int verb)
     return 1;
   }
 
-  if (isIf(t, e, 1)) {
-    printf("%.8x if(!c) {a}\n", bb->start);
-    mkif(bb, e, "if:!X");
-    return 1;
-  }
   if (isIf(e, t, 1)) {
     printf("%.8x if(c) {a}\n", bb->start);
-    mkif(bb, t, "if:X");
+    mkif(bb, t, 2, "if:X");
+    return 1;
+  }
+  if (isIf(t, e, 1)) {
+    printf("%.8x if(!c) {a}\n", bb->start);
+    mkif(bb, e, 2, "if:!X");
     return 1;
   }
   if (isIfElse(t, e, 1, 1)) {
     printf("%.8x if(c) {b} else {a}:\n", bb->start);
-    mkif(bb, nt, "if-else");
+    mkif(bb, nt, 2, "if-else");
     return 1;
   }
-  if (isIfElse(tt, te, 1, 2) && EQ(e, te)) {
+  if (isIfElse(tt, te, 1, 2) && EQ(te, e) && NumIN(t, 1)) {
     printf("%.8x if (c||d) {b} else {a}\n");
-    mkif(bb, ne, "if-else:c||d");
+    mkif(bb, ne, 2, "if-else:c||d");
     t->flags |= 0x2000;
     return 1;
   }
-  if (isIfElse(tt, e, 1, 2) && NumIN(t, 1) && NumIN(t, 1)) {
-    mkif(bb, ne, "if-else:a||b");
-    t->flags |= 0x2000;
-    ne->nifIn++;
-    return 1;
-  }
+#if 0
   if (EQ(t,et) && EQ(nt, ee) && NumIN(t, 2) && NumIN(e, 1)) {
     mkif(bb, nt, "ifgrp:!X||!Y");
     return 1;
@@ -1271,6 +1220,7 @@ int checkIf(struct bb *bb, int verb)
     mkif(bb, nt, "if-else");
     return 1;
   }
+#endif
   if (IsTerm(t)) {
     mkifret(bb, e, "ifret:X"); 
     return 1;
@@ -1910,18 +1860,18 @@ enum {
   i20,  // 2 oooo.oooo.----.iiii iiii.iiii.iiii.iiii
   i32,  // 3 oooo.oooo.oooo.---- iiii.iiii.iiii.iiii iiii,iiii.iiii.iiii
 
-  /* j4  bxx disp4     15 1 oooo.oooo.jjjj.rrrr
-   * j8  bxx disp8     21 1 0001.jjjj.cccc.jjjj
-   * j16 bxx disp16    22 2 0001.1000.cccc.0000 jjjj.jjjj.jjjj.jjjj
-   * jx24 bxx disp24    3a 3 0000.0000.0001.0000 0000.jjjj.cccc.jjjj jjjj.jjjj.jjjj.jjjj
-   * jx24 bal rp,disp24 3a 3 0000.0000.0001.0000 0010.jjjj.rrrr.jjjj jjjj.jjjj.jjjj.jjjj
-   * j24 bal ra,disp24 5  2 1100.0000.jjjj.jjjj jjjj.jjjj.jjjj,jjjj
+  /* j4  bxx disp4       
+   * j8  bxx disp8       
+   * j16 bxx disp16      
+   * jx24 
+   * jx24 bal rp,disp24  3a 3 0000.0000.0001.0000 0010.jjjj.rrrr.jjjj jjjj.jjjj.jjjj.jjjj
+   * j24 
    */
-  j4,
-  j8,
-  j16,
-  jx24,
-  j24,
+  j4,   // bxx disp4  15 1 oooo.oooo.jjjj.rrrr
+  j8,   // bxx disp8  21 1 0001.jjjj.cccc.jjjj
+  j16,  // bxx disp16 22 2 0001.1000.cccc.0000 jjjj.jjjj.jjjj.jjjj
+  jx24, // bxx disp24 3a 3 0000.0000.0001.0000 0000.jjjj.cccc.jjjj jjjj.jjjj.jjjj.jjjj
+  j24,  // bal ra,disp24   5  2 1100.0000.jjjj.jjjj jjjj.jjjj.jjjj,jjjj
 
   r12 = TYPE_REG+12,
   r13 = TYPE_REG+13,
@@ -2074,15 +2024,11 @@ struct opcode z000x[16] = {
 };
 /* nw=3 */
 struct opcode z0010[16] = {
-  [0] =
-  t(jcc24,20,0xF),// 0000.0000.0001.0000 0000.jjjj.cccc.jjjj jjjj.jjjj.jjjj.jjjj
-  [1] =
+  t(jcc24,20,0xF),  // 0000.0000.0001.0000 0000.jjjj.cccc.jjjj jjjj.jjjj.jjjj.jjjj
   xx(res,0),
-  [2] =
-  xx(bal,jx24,0,2),
-  [3] =
+  xx(bal,jx24,0,2), // 0000.0000.0001.0000 0010.jjjj.cccc.jjjj jjjj.jjjj.jjjj.jjjj
   xx(res,0),
-  [4] =
+
   b(cbit,n3,d20,2), // 0000.0000.0001.0000 oooo.dddd.-iii.BBBB dddd.dddd.dddd.dddd
   b(cbit,n3,d20,2), // 0000.0000.0001.0000 oooo.dddd.-iii.BBBB dddd.dddd.dddd.dddd
   b(cbit,n3,d20,2), // 0000.0000.0001.0000 oooo.dddd.-iii.BBBB dddd.dddd.dddd.dddd
@@ -2382,6 +2328,11 @@ int getsz(int arg, int *osz)
 uint32_t getpc(struct cpu *cpu)
 {
   return (cpu->pc - cpu->start) + cpu->nb;
+}
+
+uint32_t getoff(struct cpu *cpu)
+{
+  return (cpu->pc - cpu->start);
 }
 
 /* Extract N bytes */
@@ -2739,10 +2690,13 @@ int getarg(struct cpu *cpu, int arg)
     /* Embedded immediate */
     return TYPE_IMMV|sz|vv;
   case TYPE_REG:
+    /* Explicit register */
     return mkreg(sz, vv, 0);
   case TYPE_EMBREG:
+    /* Embedded register, part of opcode */
     return mkreg(sz, mrr_rrr(cpu->op),  cpu->rex & (REX_B|VEX_XX));
   case TYPE_EAREG:
+    /* Register, MRR.ggg */
     return mkreg(sz, mrr_ggg(cpu->mrr), cpu->rex & (REX_R|VEX_RR));
   case TYPE_EA:
   case TYPE_EAMEM:
@@ -2760,7 +2714,6 @@ int getarg(struct cpu *cpu, int arg)
   case TYPE_JMP:
     /* PC-relative jump */
     cpu->immv = getjmp(cpu, sz);
-    printf("jump: %x ", cpu->immv + _vbase);
     break;
   default:
     break;
@@ -2897,26 +2850,6 @@ struct opcode *_dis86(stack_t *stk, struct cpu *cpu)
     /* REX specified or default to 64-bit */
     cpu->osz = SIZE_QWORD;
   }
-  ta0 = getarg(cpu, ta0);
-  ta1 = getarg(cpu, ta1);
-  ta2 = getarg(cpu, ta2);
-#if 1
-  printf("{%c%c %c%c} %-8s %s%s,%s,%s",
-	 ot(ta0),
-	 ot(ta1),
-	 opc->mnem,
-	 segpfx(cpu->seg),
-	 at(cpu, ta0, as0),
-	 at(cpu, ta1, as1),
-	 at(cpu, ta2, as2));
-  if (cmt && cmt->flag == sCOMMENT) {
-    printf(" ; %s", cmt->name);
-  }
-  printf("\n");
-#endif
-  //_setstk(stk, pc, 0x3, cpu->nb);
-  cpu->pc += cpu->nb;
-
   /* Return copy of opcode with translated args */
   noc = calloc(1, sizeof(*noc));
   noc->mnem = opc->mnem;
@@ -2926,10 +2859,25 @@ struct opcode *_dis86(stack_t *stk, struct cpu *cpu)
   }
   noc->flag = opc->flag;
   noc->llop = opc->llop;
-  noc->args[0] = ta0;
-  noc->args[1] = ta1;
-  noc->args[2] = ta2;
+  noc->args[0] = getarg(cpu, ta0);
+  noc->args[1] = getarg(cpu, ta1);
+  noc->args[2] = getarg(cpu, ta2);
   noc->data    = opc;
+#if 1
+  printf("%-8s {%2s %2s %2s} %s%s,%s,%s",
+	 opc->mnem, crarg(ta0),crarg(ta1),crarg(ta2),
+	 segpfx(cpu->seg),
+	 at(cpu, noc->args[0], as0),
+	 at(cpu, noc->args[1], as1),
+	 at(cpu, noc->args[2], as2));
+  if (cmt && cmt->flag == sCOMMENT) {
+    printf(" ; %s", cmt->name);
+  }
+  printf("\n");
+#endif
+  //_setstk(stk, pc, 0x3, cpu->nb);
+  cpu->pc += cpu->nb;
+
   return noc;
 }
 
@@ -2963,8 +2911,8 @@ const char *crarg(int arg)
   case j24: return "j24";
 
   case Eb:  return "Eb";
-  case Gb:  return "Gb";
   case Ev:  return "Ev";
+  case Gb:  return "Gb";
   case Gv:  return "Gv";
   case gb:  return "gb";
   case gv:  return "gv";
@@ -3285,6 +3233,7 @@ struct opcode *_discr16(stack_t *stk, struct cpu *cpu)
 }
 
 extern struct opcode *_disarm(stack_t *stk, struct cpu *cpu);
+extern struct opcode *_dissh4(stack_t *stk, struct cpu *cpu);
 
 void showinst(struct opcode *opc, int n, const char *lbl)
 {
@@ -3326,12 +3275,22 @@ int getbb(stack_t *stk, struct cpu *cpu, struct opcode *opc, int start,
   int *jtab, nj;
 
   switch (mach) {
+  case MACH_SH4:
+    if (!opc->mnem)
+      break;
+    if (!strcmp(opc->mnem, "rts")) {
+      return addBB(stk, bbTERM, start, pos, ninst, opc, 0);
+    }
+    if (!strcmp(opc->mnem, "bt") || !strcmp(opc->mnem, "bf")) {
+      return addBB(stk, bbCOND, start, pos, ninst, opc, 2, pos, cpu->immv);
+    }
+    break;
   case MACH_X86_16:
   case MACH_X86_32:
   case MACH_X86_64:
     if (!strcmp(opc->mnem, "jmp")) {
       if (tt(opc->args[0]) == TYPE_JMP) {
-	/* Unconditional jump: Jx */
+	/* Unconditional jump:Jx */
 	return addBB(stk, bbJUMP, start, pos, ninst, opc, 1, cpu->immv);
       }
       if (tt(opc->args[0]) == TYPE_OFFSET) {
@@ -4267,21 +4226,6 @@ void _emucc(struct imap *i, const char *op, int cond)
   }
 }
 
-struct emutab {
-  const char *mnem;
-  int hli;
-  int dst;
-  int arg0;
-  int arg1;
-  int arg2;
-};
-
-enum {
-  _a0 = 0xf0f0,
-  _a1 = 0xf0f1,
-  _a2 = 0xf0f2,
-};
-
 int emuarg(struct imap *i, int arg)
 {
   if (arg >= _a0 && arg <= _a2)
@@ -5019,7 +4963,7 @@ void _gencode(struct bb *bb, struct imap *imap, int lvl, int sub)
   while (bb) {
     if (bb->start == sub)
       break;
-    printf("-- start: %.8x\n", bb->start);
+    printf("//-- start: %.8x\n", bb->start);
     for (i = bb->start; i < bb->end; ) {
       const char *oa1 = ota1(&imap[i]);
       const char *oa2 = ota2(&imap[i]);
@@ -5052,7 +4996,7 @@ void _gencode(struct bb *bb, struct imap *imap, int lvl, int sub)
       printf("@@%.8x %s %s %s;\n", pc, ci->opc->mnem, oa1, oa2);
 #endif
     }
-    printf("--- end: %.8x\n", bb->start);
+    printf("//--- end: %.8x\n", bb->start);
     if (bb->type == bbIF) {
       pi = prv(ci);
       printf("if (");
@@ -5222,6 +5166,10 @@ void parsebb(void *_start, int len, int off, uint64_t vbase, int mach)
   imap[0].flag=1;
   
   switch (mach) {
+  case MACH_SH4:
+    mode = SIZE_WORD;
+    dis = _dissh4;
+    break;
   case MACH_ARM:
     scanarmfn(&stk);
     mode = SIZE_DWORD;
