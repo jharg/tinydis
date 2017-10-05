@@ -292,9 +292,9 @@ void winAPI()
 void readmz(void *buf, int size)
 {
   mz_file_hdr *mz = buf;
-  uint32_t sz, *rlc;
+  uint32_t sz;
   int i, seg, ofs, start, rs, ra;
-  int *segTab, nseg, oseg;
+  int oseg;
 
   sz = mz->e_cp * 512;
   if (mz->e_cblp) {
@@ -320,8 +320,6 @@ void readmz(void *buf, int size)
          mz->e_oeminfo);
   printf("NE/PE Header offset   : %lx\n", mz->e_lfanew);
 
-  nseg = 0;
-  segTab = alloca(mz->e_crlc * sizeof(int));
   addSym(MKADDR(mz->e_cs, mz->e_ip), 1, NULL, "_start");
 
   /* Do relocs */
@@ -375,7 +373,6 @@ int readne(void *buf, int sz)
   ne_file_hdr *ne;
   ne_segment  *ns;
   ne_reloctab *nr;
-  ne_bundle   *nb;
   uint16_t    *nm;
   uint8_t     *ni;  // imports table
   const char  **mrt;
@@ -393,7 +390,6 @@ int readne(void *buf, int sz)
 
   ne = nebuf;
   ns = nebuf + ne->ne_segtab; /* segment table */
-  nb = nebuf + ne->ne_enttab; /* entry table */
   ni = nebuf + ne->ne_imptab; /* imports      : pascalstr[] */
   nm = nebuf + ne->ne_modtab; /* module table : uint16_t[] */
 

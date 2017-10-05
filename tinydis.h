@@ -391,7 +391,8 @@ enum {
   _a2 = 0xf0f2,
 };
 
-#define _mkimm(x) (TYPE_IMMV|SIZE_BYTE|(x))
+#define _mkreg(sz,vv) (TYPE_REG+(sz)+(vv))
+#define _mkimm(x)     (TYPE_IMMV+SIZE_BYTE+(x))
 
 #define uno(a,x)     (((a) << 24) + (x))
 #define duo(a,x,y)   ((((y) << 8) | uno(a,x)))
@@ -448,6 +449,28 @@ enum {
   hliRCR,
   hliROL,
   hliRCL,
+};
+
+typedef int64_t val_t;
+
+val_t _getval(struct imap *ci, int arg);
+void  _setval(struct imap *ci, int arg, val_t v);
+val_t _memread(struct imap *ci, int seg, int base, int index, val_t off, int arg);
+void  _memwrite(struct imap *ci, int seg, int base, int index, val_t off, int arg, val_t val);
+val_t _popv(struct imap *ci, int arg);
+void  _pushv(struct imap *ci, int arg, val_t v);
+int   emul(struct imap *ci, const char *m, int op, int dst, int a0, int a1, int a2);
+int isemu(struct imap *i, int n, ...);
+int runemu(struct imap *i, struct emutab *etab);
+
+struct regval
+{
+  union {
+    uint8_t  b[2];
+    uint16_t w;
+    uint32_t d;
+    uint64_t q;
+  };
 };
 
 #endif

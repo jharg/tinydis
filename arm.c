@@ -9,6 +9,10 @@
 #include "tinydis.h"
 #include "arm.h"
 
+extern struct regval _regs[];
+extern uint64_t _vbase;
+extern int _cpuflag;
+
 #define _LBIT 20
 #define _WBIT 21
 #define _NBIT 22
@@ -346,29 +350,26 @@ static struct opcode cdp_mcr[] = {
 
 /*===============================================*/
 /* Top-level opcode table. Key off bits 24..27   */
+/*  cccc.oooo.xxxx.xxxx.xxxx.xxxx.xxxx.xxxx      */
 /*===============================================*/
 struct opcode armmap[] = {
-  _t(data0tt,4,0xF),
+  _t(data0tt, 4,0xF),
   _t(data1tt,20,0xF),
-  _t(data2,20,0xF),
-  _t(data3,20,0xF),
-  _t(ldst4,20,0x7),        // 0.ubwl PostI
-  _t(ldst5,20,0x7),        // 1.ubwl PreI
+  _t(data2,  20,0xF),
+  _t(data3,  20,0xF),
+  _t(ldst4,  20,0x7),      // 0.ubwl PostI
+  _t(ldst5,  20,0x7),      // 1.ubwl PreI
   _t(ldst, _LBIT,0x1),     // 0.ubwl PostM
   _t(ldst, _LBIT,0x1),     // 1.ubwl PreM
   _t(ldmstm89, _LBIT,0x1), // p.ublock xfer
   _t(ldmstm89, _LBIT,0x1), // block xfer
-  _t(brcc,28,0xF),         // conditional/unconditional jump
-  __(bl,  Br24),           // call
+  _t(brcc,   28,0xF),      // conditional/unconditional jump
+  __(bl,     Br24),        // function call
   _t(stc_ldc, _LBIT, 0x1), // coprocessor
   _t(stc_ldc, _LBIT, 0x1), // coprocessor
   _t(cdp_mcr, 4, 0x1),     // coprocessor
   __(svci),
 };
-
-extern uint64_t _vbase;
-
-#define mkreg(sz,vv) (TYPE_REG+(sz)+(vv))
 
 uint32_t _rol(uint32_t v, int n)
 {
@@ -444,17 +445,17 @@ int armop(struct cpu *cpu, int arg, int sz)
   case MRn:
   case Rd:
     printf("%s ", aregs[rd]);
-    return mkreg(sz, rd);
+    return _mkreg(sz, rd);
   case MRd:
   case Rn:
     printf("%s ", aregs[rn]);
-    return mkreg(sz, rn);
+    return _mkreg(sz, rn);
   case Rm:
     printf("%s ", aregs[rm]);
-    return mkreg(sz, rm);
+    return _mkreg(sz, rm);
   case Rs:
     printf("%s ", aregs[rs]);
-    return mkreg(sz, rs);
+    return _mkreg(sz, rs);
   case Rms:    // cccc.000o.ooos.nnnn.dddd.ssss.0tt1.mmmm
     printf("%s %s %s ", aregs[rm], st[tt], aregs[rs]);
     break;
@@ -554,3 +555,61 @@ struct opcode *_disarm(stack_t *stk, struct cpu *cpu)
   return noc;
 }
 
+/*============================================================
+ * ARM emulator
+ *   mul: Rd = Rm * Rs
+ *   mla: Rd = Rm * Rs + Rn
+ *  mull: Hi:Lo = Rm * Rs
+ *  mlal: Hi:Lo = Rm * Rs + Hi:Lo
+ *============================================================*/
+struct emutab armetab[] = {
+  { "and", hliAND,   _a0, _a1, _a2, 0 },
+  { "eor", hliXOR,   _a0, _a1, _a2, 0 },
+  { "sub", hliSUB,   _a0, _a1, _a2, 0 },
+  { "rsb", hliSUB,   _a0, _a2, _a1, 0 },
+  { "add", hliADD,   _a0, _a1, _a2, 0 },
+  { "adc", hliADD,   _a0, _a1, _a2, rCF },
+  { "sbc", hliSUB,   _a0, _a1, _a2, rCF },
+  { "rsc", hliSUB,   _a0, _a2, _a1, rCF },
+  { "orr", hliOR,    _a0, _a1, _a2, 0 },
+  { "mov", hliASSIGN,_a0, _a1,   0, 0 },
+  { "mvn", hliNOT,   _a0, _a1,   0, 0 },
+  { "teq", hliXOR,    0,  _a1, _a2, 0 },
+  { "tst", hliAND,    0,  _a1, _a2, 0 },
+  { "cmn", hliADD,    0,  _a1, _a2, 0 },
+  { "cmp", hliSUB,    0,  _a1, _a2, 0 },
+  { "mul", hliMUL,   _a0, _a1, _a2, 0 },  /* Rd = Rm * Rs */
+  { "ldr", hliASSIGN,_a0, _a1, 0, 0 },
+  { "ldrb",hliASSIGN,_a0, _a1, 0, 0 },
+  { "str", hliASSIGN,_a1, _a0, 0, 0 },
+  { "strb",hliASSIGN,_a1, _a0, 0, 0 },
+  { },
+};
+
+/* GEN: Rn, Rd, Op2 */
+void armemu(struct imap *i)
+{
+  val_t a, b;
+  int a0 = i->opc->args[0];
+  int a1 = i->opc->args[1];
+  int a2 = i->opc->args[2];
+  int k;
+
+  for (k = 0; k<16; k++) {
+    printf("%3s: %.8x ", aregs[k], _getval(i, _mkreg(SIZE_DWORD,k)));
+    if ((k & 0x7) == 7)
+      printf("\n");
+  }
+  if (runemu(i, armetab))
+    return;
+  /* Special case for BIC */
+  if (isemu(i, 1, "bic")) {
+    a = _getval(i, a1);
+    b = _getval(i, a2);
+    _setval(i, a0, a & ~b);
+  }
+  if (isemu(i, 1, "mla")) {
+    a = _getval(i, a1);
+    b = _getval(i, a2);
+  }
+}

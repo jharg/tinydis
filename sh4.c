@@ -276,94 +276,94 @@ struct opcode sh0000_b[16] = {
 
 /* 0000.xxxx.xxxx.oooo */
 struct opcode sh0000[16] = {
-  /* 0000 */ __(movi20, i20, Rn), // 0000nnnniiii0000 iiiiiiiiiiiiiiii
-  /* 0001 */ __(movi20s,i20, Rn), // 0000nnnniiii0001 iiiiiiiiiiiiiiii
-  /* 0010 */ _t(sh0000_2, 4, 0xF),
-  /* 0011 */ _t(sh0000_3, 4, 0xF),
-  /* 0100 */ _b(mov, Rm, dn0), // Rm, [Rn+R0]
-  /* 0101 */ _w(mov, Rm, dn0), // Rm, [Rn+R0]
-  /* 0110 */ _d(mov, Rm, dn0), // Rm, [Rn+R0]
-  /* 0111 */ _d(mul, Rm, Rn),
-  /* 1000 */ _t(sh0000_8, 4, 0xF),
-  /* 1001 */ _t(sh0000_9, 4, 0xF),
-  /* 1010 */ _t(sh0000_a, 4, 0xF),
-  /* 1011 */ _t(sh0000_b, 4, 0xF),
-  /* 1100 */ _b(mov, dm0, Rn),  // [Rm+R0], Rn
-  /* 1101 */ _w(mov, dm0, Rn),  // [Rm+R0], Rn
-  /* 1110 */ _d(mov, dm0, Rn),  // [Rm+R0], Rn
-  /* 1111 */ __(mac, dm0, dn0), // [Rm++], [Rn++]
+  __(movi20, i20, Rn), // 0000nnnniiii0000 iiiiiiiiiiiiiiii
+  __(movi20s,i20, Rn), // 0000nnnniiii0001 iiiiiiiiiiiiiiii
+  _t(sh0000_2, 4, 0xF),
+  _t(sh0000_3, 4, 0xF),
+  _b(mov, Rm, dn0), // Rm, [Rn+R0]
+  _w(mov, Rm, dn0), // Rm, [Rn+R0]
+  _d(mov, Rm, dn0), // Rm, [Rn+R0]
+  _d(mul, Rm, Rn),
+  _t(sh0000_8, 4, 0xF),
+  _t(sh0000_9, 4, 0xF),
+  _t(sh0000_a, 4, 0xF),
+  _t(sh0000_b, 4, 0xF),
+  _b(mov, dm0, Rn),  // [Rm+R0], Rn
+  _w(mov, dm0, Rn),  // [Rm+R0], Rn
+  _d(mov, dm0, Rn),  // [Rm+R0], Rn
+  __(mac, dm0, dn0), // [Rm++], [Rn++]
 };
 
 /* 0010.xxxx.xxxx.xxxx */
 struct opcode sh0010[16] = {
-  /* 0000 */ _b(mov,    Rm, dn), // [Rn]
-  /* 0001 */ _w(mov,    Rm, dn), // [Rn]
-  /* 0010 */ _d(mov,    Rm, dn), // [Rn]
-  /* 0011 */ _0,
-  /* 0100 */ _b(mov,    Rm, Dn), // [--Rn]
-  /* 0101 */ _w(mov,    Rm, Dn), // [--Rn]
-  /* 0110 */ _d(mov,    Rm, Dn), // [--Rn]
-  /* 0111 */ __(div0s,  Rm, Rn),
-  /* 1000 */ __(tst,    Rm, Rn),
-  /* 1001 */ __(and,    Rm, Rn),
-  /* 1010 */ __(xor,    Rm, Rn),
-  /* 1011 */ __(or,     Rm, Rn),
-  /* 1100 */ __(cmp.str,Rm, Rn),
-  /* 1101 */ __(xtrct,  Rm, Rn), // (Rm.L<<16)|(Rn.H>>16)
-  /* 1110 */ _w(mulu,   Rm, Rn),
-  /* 1111 */ _w(muls,   Rm, Rn),
+  _b(mov,    Rm, dn), // [Rn]
+  _w(mov,    Rm, dn), // [Rn]
+  _d(mov,    Rm, dn), // [Rn]
+  _0,
+  _b(mov,    Rm, Dn), // [--Rn]
+  _w(mov,    Rm, Dn), // [--Rn]
+  _d(mov,    Rm, Dn), // [--Rn]
+  __(div0s,  Rm, Rn),
+  __(tst,    Rm, Rn),
+  __(and,    Rm, Rn),
+  __(xor,    Rm, Rn),
+  __(or,     Rm, Rn),
+  __(cmp.str,Rm, Rn),
+  __(xtrct,  Rm, Rn), // (Rm.L<<16)|(Rn.H>>16)
+  _w(mulu,   Rm, Rn),
+  _w(muls,   Rm, Rn),
 };
 
 /* 0011.xxxx.xxxx.0001 oooodddddddddddd */
 struct opcode sh0011_1[16] = {
-  /* 0000 */ _b(mov, Rm,   d12n),
-  /* 0001 */ _w(mov, Rm,   d12n),
-  /* 0010 */ _d(mov, Rm,   d12n),
-  /* 0011 */ _s(fmov,FRm,  d12n),
-  /* 0100 */ _b(mov, d12m, Rn),
-  /* 0101 */ _w(mov, d12m, Rn),
-  /* 0110 */ _d(mov, d12m, Rn),
-  /* 0111 */ _s(fmov,d12m, FRn),
-  /* 1000 */ _b(movu,d12m, Rn),
-  /* 1001 */ _w(movu,d12m, Rn),
+  _b(mov, Rm,   d12n),
+  _w(mov, Rm,   d12n),
+  _d(mov, Rm,   d12n),
+  _s(fmov,FRm,  d12n),
+  _b(mov, d12m, Rn),
+  _w(mov, d12m, Rn),
+  _d(mov, d12m, Rn),
+  _s(fmov,d12m, FRn),
+  _b(movu,d12m, Rn),
+  _w(movu,d12m, Rn),
 };
 
 /* 0011.xxxx.xxxx.1001 oooodddddddddddd */
 struct opcode sh0011_9[16] = {
-  /* 0000 */ _b(bclr, i3, d12n),
-  /* 0001 */ _b(bset, i3, d12n),
-  /* 0010 */ _b(bst,  i3, d12n),
-  /* 0011 */ _b(bld,  i3, d12n),
-  /* 0100 */ _b(band, i3, d12n),
-  /* 0101 */ _b(bor,  i3, d12n),
-  /* 0110 */ _b(bxor, i3, d12n),
-  /* 0111 */ _0,
-  /* 1000 */ _0,
-  /* 1001 */ _0,
-  /* 1010 */ _0,
-  /* 1011 */ _b(bldnot, i3,d12n),
-  /* 1100 */ _b(bandnot,i3,d12n),
-  /* 1101 */ _b(bornot, i3,d12n),
+  _b(bclr, i3, d12n),
+  _b(bset, i3, d12n),
+  _b(bst,  i3, d12n),
+  _b(bld,  i3, d12n),
+  _b(band, i3, d12n),
+  _b(bor,  i3, d12n),
+  _b(bxor, i3, d12n),
+  _0,
+  _0,
+  _0,
+  _0,
+  _b(bldnot, i3,d12n),
+  _b(bandnot,i3,d12n),
+  _b(bornot, i3,d12n),
 };
 
 /* 0011.xxxx.xxxx.xxxx */
 struct opcode sh0011[16] = {
-  /* 0000 */ __(cmp/eq, Rm, Rn),
-  /* 0001 */ _t(sh0011_1, 28, 0xF),
-  /* 0010 */ __(cmp.hs, Rm, Rn),
-  /* 0011 */ __(cmp.ge, Rm, Rn),
-  /* 0100 */ __(div1,  Rm, Rn),
-  /* 0101 */ _d(dmulu, Rm, Rn),
-  /* 0110 */ __(cmp/hi, Rm, Rn),
-  /* 0111 */ __(cmp/gt, Rm, Rn),
-  /* 1000 */ __(sub,   Rm, Rn),
-  /* 1001 */ _t(sh0011_9, 28, 0xF),
-  /* 1010 */ __(subc,  Rm, Rn),
-  /* 1011 */ __(subv,  Rm, Rn),
-  /* 1100 */ __(add,   Rm, Rn),
-  /* 1101 */ _d(dmuls, Rm, Rn),
-  /* 1110 */ __(addc,  Rm, Rn),
-  /* 1111 */ __(addv,  Rm, Rn),
+  __(cmp/eq, Rm, Rn),
+  _t(sh0011_1, 28, 0xF),
+  __(cmp.hs, Rm, Rn),
+  __(cmp.ge, Rm, Rn),
+  __(div1,  Rm, Rn),
+  _d(dmulu, Rm, Rn),
+  __(cmp/hi, Rm, Rn),
+  __(cmp/gt, Rm, Rn),
+  __(sub,   Rm, Rn),
+  _t(sh0011_9, 28, 0xF),
+  __(subc,  Rm, Rn),
+  __(subv,  Rm, Rn),
+  __(add,   Rm, Rn),
+  _d(dmuls, Rm, Rn),
+  __(addc,  Rm, Rn),
+  __(addv,  Rm, Rn),
 };
 
 struct opcode sh0100_0[16] = {
@@ -494,42 +494,42 @@ struct opcode sh0100_e[16] = {
 
 /* 0110.xxxx.xxxx.oooo */
 struct opcode sh0100[16] = {
-  /* 0000 */ _t(sh0100_0, 4, 0xF),
-  /* 0001 */ _t(sh0100_1, 4, 0xF),
-  /* 0010 */ _t(sh0100_2, 4, 0xF),
-  /* 0011 */ _t(sh0100_3, 4, 0xF),
-  /* 0100 */ _t(sh0100_4, 4, 0xF),
-  /* 0101 */ _t(sh0100_5, 4, 0xF),
-  /* 0110 */ _t(sh0100_6, 4, 0xF),
-  /* 0111 */ _t(sh0100_7, 4, 0xF),
-  /* 1000 */ _t(sh0100_8, 4, 0xF),
-  /* 1001 */ _t(sh0100_9, 4, 0xF),
-  /* 1010 */ _t(sh0100_a, 4, 0xF),
-  /* 1011 */ _t(sh0100_b, 4, 0xF),
-  /* 1100 */ __(shad, Rm, Rn),
-  /* 1101 */ __(shld, Rm, Rn),
-  /* 1110 */ _t(sh0100_e, 0, 0xF),
-  /* 1111 */ _w(mac,  Dm, Dn),
+  _t(sh0100_0, 4, 0xF),
+  _t(sh0100_1, 4, 0xF),
+  _t(sh0100_2, 4, 0xF),
+  _t(sh0100_3, 4, 0xF),
+  _t(sh0100_4, 4, 0xF),
+  _t(sh0100_5, 4, 0xF),
+  _t(sh0100_6, 4, 0xF),
+  _t(sh0100_7, 4, 0xF),
+  _t(sh0100_8, 4, 0xF),
+  _t(sh0100_9, 4, 0xF),
+  _t(sh0100_a, 4, 0xF),
+  _t(sh0100_b, 4, 0xF),
+  __(shad, Rm, Rn),
+  __(shld, Rm, Rn),
+  _t(sh0100_e, 0, 0xF),
+  _w(mac,  Dm, Dn),
 };
 
 /* 0110.xxxx.xxxx.xxxx */
 struct opcode sh0110[16] = {
-  /* 0000 */ _b(mov,   dm, Rn),
-  /* 0001 */ _w(mov,   dm, Rn),
-  /* 0010 */ _d(mov,   dm, Rn),
-  /* 0011 */ __(mov,   Rm, Rn),
-  /* 0100 */ _b(mov,   Dm, Rn), // Rn=[Rm++]
-  /* 0101 */ _w(mov,   Dm, Rn), // Rn=[Rm++]
-  /* 0110 */ _d(mov,   Dm, Rn), // Rn=[Rm++]
-  /* 0111 */ __(not,   Rm, Rn),
-  /* 1000 */ _b(swap,  Rm, Rn),
-  /* 1001 */ _w(swap,  Rm, Rn),
-  /* 1010 */ __(negc,  Rm, Rn),
-  /* 1011 */ __(neg,   Rm, Rn),
-  /* 1100 */ _b(extu,  Rm, Rn),
-  /* 1101 */ _w(extu,  Rm, Rn),
-  /* 1110 */ _b(exts,  Rm, Rn),
-  /* 1111 */ _w(exts,  Rm, Rn),
+  _b(mov,   dm, Rn),
+  _w(mov,   dm, Rn),
+  _d(mov,   dm, Rn),
+  __(mov,   Rm, Rn),
+  _b(mov,   Dm, Rn), // Rn=[Rm++]
+  _w(mov,   Dm, Rn), // Rn=[Rm++]
+  _d(mov,   Dm, Rn), // Rn=[Rm++]
+  __(not,   Rm, Rn),
+  _b(swap,  Rm, Rn),
+  _w(swap,  Rm, Rn),
+  __(negc,  Rm, Rn),
+  __(neg,   Rm, Rn),
+  _b(extu,  Rm, Rn),
+  _w(extu,  Rm, Rn),
+  _b(exts,  Rm, Rn),
+  _w(exts,  Rm, Rn),
 };
 
 struct opcode sh1000_6[2] = {
@@ -543,81 +543,81 @@ struct opcode sh1000_7[2] = {
 
 /* 1000.oooo.xxxx.xxxx */
 struct opcode sh1000[16] = {
-  /* 0000 */ _b(mov,  R0, d4n), 
-  /* 0001 */ _w(mov,  R0, d4n),
-  /* 0010 */ __(setrc, i8),
-  /* 0011 */ __(jsr,   i8),
-  /* 0100 */ _b(mov,   d4m, R0),
-  /* 0101 */ _w(mov,   d4m, R0),
-  /* 0110 */ _t(sh1000_6, 4, 1),
-  /* 0111 */ _t(sh1000_7, 4, 1),
-  /* 1000 */ __(cmp.eq, i8, R0),
-  /* 1001 */ __(bt,   j8),
-  /* 1010 */ _0,
-  /* 1011 */ __(bf,   j8),
-  /* 1100 */ __(ldrs, d8p),
-  /* 1101 */ __(bt.s, j8),     // 1000.1101.dddd.dddd
-  /* 1110 */ __(ldre, d8p),
-  /* 1111 */ __(bf.s, j8),     // 1000.1111.dddd.dddd
+  _b(mov,  R0, d4n), 
+  _w(mov,  R0, d4n),
+  __(setrc, i8),
+  __(jsr,   i8),
+  _b(mov,   d4m, R0),
+  _w(mov,   d4m, R0),
+  _t(sh1000_6, 4, 1),
+  _t(sh1000_7, 4, 1),
+  __(cmp.eq, i8, R0),
+  __(bt,   j8),
+  _0,
+  __(bf,   j8),
+  __(ldrs, d8p),
+  __(bt.s, j8),     // 1000.1101.dddd.dddd
+  __(ldre, d8p),
+  __(bf.s, j8),     // 1000.1111.dddd.dddd
 };
 
 /* 1100.oooo.xxxx.xxxx */
 struct opcode sh1100[16] = {
-  /* 0000 */ _b(mov, R0, d8g),
-  /* 0001 */ _w(mov, R0, d8g),
-  /* 0010 */ _d(mov, R0, d8g), 
-  /* 0011 */ __(trapa, i8),
-  /* 0100 */ _b(mov,  d8g, R0),
-  /* 0101 */ _w(mov,  d8g, R0),
-  /* 0110 */ _d(mov,  d8g, R0),
-  /* 0111 */ __(mova, d8p, R0),
-  /* 1000 */ __(tst, i8, R0),
-  /* 1001 */ __(and, i8, R0),
-  /* 1010 */ __(xor, i8, R0),
-  /* 1011 */ __(or,  i8, R0),
-  /* 1100 */ _b(tst, i8, dr0g),
-  /* 1101 */ _b(and, i8, dr0g),
-  /* 1110 */ _b(xor, i8, dr0g),
-  /* 1111 */ _b(or,  i8, dr0g),
+  _b(mov, R0, d8g),   // 1100.0000.dddd.dddd (R0,d8)
+  _w(mov, R0, d8g),   // 1100.0001.dddd.dddd (R0,d8)
+  _d(mov, R0, d8g),   // 1100.0010.dddd.dddd (R0,d8)
+  __(trapa, i8),
+  _b(mov,  d8g, R0),  // 1100.0100.dddd.dddd (R0,d8)
+  _w(mov,  d8g, R0),  // 1100.0101.dddd.dddd (R0,d8)
+  _d(mov,  d8g, R0),  // 1100.0110.dddd.dddd (R0,d8)
+  __(mova, d8p, R0),  // 1100.0111.dddd.dddd (R0,d8)
+  __(tst, i8, R0),    // 1100.1000.iiii.iiii
+  __(and, i8, R0),    // 1100.1001.iiii.iiii
+  __(xor, i8, R0),    // 1100.1010.iiii.iiii
+  __(or,  i8, R0),    // 1100.1011.iiii.iiii
+  _b(tst, i8, dr0g),  // 1100.1100.iiii.iiii (R0,GBR)
+  _b(and, i8, dr0g),  // 1100.1101.iiii.iiii (R0,GBR)
+  _b(xor, i8, dr0g),  // 1100.1110.iiii.iiii (R0,GBR)
+  _b(or,  i8, dr0g),  // 1100.1111.iiii.iiii (R0,GBR)
 };
 
 /* 1111.xxxx.xxxx.xxxx */
 struct opcode sh1111[16] = {
-  /* 0000 */ __(fadd, FRm, FRn),
-  /* 0001 */ __(fsub, FRm, FRn),
-  /* 0010 */ __(fmul, FRm, FRn),
-  /* 0011 */ __(fdiv, FRm, FRn),
-  /* 0100 */ __(fcmp.eq,FRm,FRn),
-  /* 0101 */ __(fcmp.gt,FRm,FRn),
-  /* 0110 */ _s(fmov, dm0, FRn),
-  /* 0111 */ _s(fmov, FRm, dn0),
-  /* 1000 */ _s(fmov, dm,  FRn),
-  /* 1001 */ _s(fmov, dm,  FRn),
-  /* 1010 */ _s(fmov, FRm, dn),
-  /* 1011 */ _s(fmov, FRm, dn),
-  /* 1100 */ __(fmov, FRm, FRn),
-  /* 1101 */ _0,
-  /* 1110 */ __(fmac, FRm, FRm, FRn),
-  /* 1111 */ _0,
+  __(fadd, FRm, FRn),
+  __(fsub, FRm, FRn),
+  __(fmul, FRm, FRn),
+  __(fdiv, FRm, FRn),
+  __(fcmp.eq,FRm,FRn),
+  __(fcmp.gt,FRm,FRn),
+  _s(fmov, dm0, FRn),
+  _s(fmov, FRm, dn0),
+  _s(fmov, dm,  FRn),
+  _s(fmov, dm,  FRn),
+  _s(fmov, FRm, dn),
+  _s(fmov, FRm, dn),
+  __(fmov, FRm, FRn),
+  _0,
+  __(fmac, FRm, FRm, FRn),
+  _0,
 };
 
 struct opcode shtab[16] = {
-  /* 0000 */ _t(sh0000, 0, 0xF),  // 0000........oooo
-  /* 0001 */ _d(mov,   Rm, d4n),  // 0001nnnnmmmmdddd
-  /* 0010 */ _t(sh0010, 0, 0xF),  // 0010........oooo
-  /* 0011 */ _t(sh0011, 0, 0xF),  // 0011........oooo
-  /* 0100 */ _t(sh0100, 0, 0xF),  // 0100........oooo
-  /* 0101 */ _d(mov, d4m, Rn),    // 0101nnnnmmmmdddd
-  /* 0110 */ _t(sh0110, 0, 0xF),  // 0110........oooo
-  /* 0111 */ __(add, i8, Rn),     // 0111nnnniiiiiiii
-  /* 1000 */ _t(sh1000, 8, 0xF),  // 1000oooo........
-  /* 1001 */ _w(mov, d8p, Rn),    // 1001nnnndddddddd
-  /* 1010 */ __(bra, j12),        // 1010dddddddddddd
-  /* 1011 */ __(bsr, j12),        // 1011dddddddddddd
-  /* 1100 */ _t(sh1100, 8, 0xF),  // 1100oooo........
-  /* 1101 */ _d(mov, d8p, Rn),    // 1101nnnndddddddd
-  /* 1110 */ __(mov, i8, Rn),     // 1110nnnniiiiiiii
-  /* 1111 */ _t(sh1111, 0, 0xF),
+  _t(sh0000, 0, 0xF),  // 0000........oooo
+  _d(mov,   Rm, d4n),  // 0001nnnnmmmmdddd
+  _t(sh0010, 0, 0xF),  // 0010........oooo
+  _t(sh0011, 0, 0xF),  // 0011........oooo
+  _t(sh0100, 0, 0xF),  // 0100........oooo
+  _d(mov, d4m, Rn),    // 0101nnnnmmmmdddd
+  _t(sh0110, 0, 0xF),  // 0110........oooo
+  __(add, i8, Rn),     // 0111nnnniiiiiiii
+  _t(sh1000, 8, 0xF),  // 1000oooo........
+  _w(mov, d8p, Rn),    // 1001nnnndddddddd
+  __(bra, j12),        // 1010dddddddddddd
+  __(bsr, j12),        // 1011dddddddddddd
+  _t(sh1100, 8, 0xF),  // 1100oooo........
+  _d(mov, d8p, Rn),    // 1101nnnndddddddd
+  __(mov, i8, Rn),     // 1110nnnniiiiiiii
+  _t(sh1111, 0, 0xF),  // 1111........oooo
 };
 
 struct emutab shetab[] = {

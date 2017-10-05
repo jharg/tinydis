@@ -41,8 +41,8 @@ const char *shtype[] = {
 
 #define cc(a,b) case a##b: return #b;
 
-static int elf_stt(uint8_t info) { return info & 0xF; };
-static int elf_stb(uint8_t info) { return info >> 4; };
+#define elf_stt(i) ((i) & 0xF)
+#define elf_stb(i) ((i) >> 4)
 
 static const char *elf_sym_type(uint8_t info)
 {

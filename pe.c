@@ -69,7 +69,8 @@ void doImport(void *buf, int impoff, int sz, int ibase)
 	   imp[i].timedate,
 	   imp[i].forwardchain,
 	   imp[i].name + ibase,
-	   imp[i].firstthunk + ibase);
+	   imp[i].firstthunk + ibase,
+	   name);
   }
 }
 
@@ -78,9 +79,7 @@ int readcoff(void *buf, size_t sz, int off)
   coff_file_hdr *fhdr = buf + off;
   coff_opt_hdr  *ohdr = (void *)&fhdr[1];
   coff_scn_hdr  *shdr = (void *)&fhdr[1] + fhdr->f_opthdr;
-  pe_imp_hdr    *imp;
   uint32_t ibase = 0;
-  int i;
 
   printf("================= COFF Header =================\n");
   printf("size   : %x\n", sz - off);
@@ -104,6 +103,9 @@ int readcoff(void *buf, size_t sz, int off)
     //parsebb(buf + shdr[0].s_scnptr, ohdr->text_size, 0, 0, MACH_X86_32);
   }
 #if 0
+  pe_imp_hdr    *imp;
+  int i = 0;
+  
   printf("id  paddr    vaddr    size     scnptr   relptr         lnno           flags    name\n");
   for (i = 0; i < fhdr->f_nscns; i++) {
     printf("%3d %.8x %.8x %.8x %.8x %.8x/%.5x %.8x/%.5x %.8x %-10s\n",
