@@ -8,68 +8,7 @@
 #include <inttypes.h>
 #include <string.h>
 #include "tinydis.h"
-
-enum {
-  SH4_BASE = 0x4000,
-  Rm,
-  Rn,
-  FRm,
-  FRn,
-  i8,
-  i20,
-  Dm,   // [--Rm]
-  Dn,   // [--Rn]
-  Dr15, // [R15++]
-  d4n,  // [Rn+d4]
-  d4m,  // [Rm+d4]
-  dn0,  // [Rn+R0]
-  dm0,  // [Rm+R0]
-  dn,   // [Rm]
-  dm,   // [Rn]
-  Pn,   // [Rn++]
-  Pm,   // [Rm++]
-  d8g,  // [GBR+d8]
-  dr0g, //[GBR+R0]
-  d8p,  // [Rm+PC]
-  dmp,  // 
-  d12n, // [Rn+d12]
-  d12m, // [Rm+d12]
-  j8,
-  j12,
-
-  _fT,
-  _fS,
-  _fM,
-  _fQ,
-
-  SIZE_FLOAT = 'f' << SIZE_SHIFT,
-
-  R0  = TYPE_REG+SIZE_DWORD,
-  R15 = TYPE_REG+SIZE_DWORD+15,
-  PC  = TYPE_REG+SIZE_DWORD+16,
-
-  rMACH,
-  rMACL,
-  rPR,
-  rSGR,
-  rDSR,
-  rFPUL,
-  rA0,
-  rX0,
-  rX1,
-  rY0,
-  rY1,
-  rDBR,
-  rGBR,
-  rVBR,
-  rTBR,
-  rSSR,
-  rSR,
-  rSPC,
-  rMOD,
-  rRS,
-  rRE,
-};
+#include "sh4.h"
 
 #define _0 { 0 }
 #define _f(f,m,a...)   { .mnem=#m, .args={ a }, .flag=f }
@@ -119,21 +58,18 @@ static int getarg(struct cpu *cpu, int arg, int sz)
   case i20:
     v = (nb0 << 16) + _get16(pc+2);
     return mkimm(cpu, SIZE_DWORD, v);
-  case Dr15:
-    printf(" {Dr15}@R15");
+  case Pr15:
+    printf(" {Pr15}@R15");
     return mkmem(R15, 0, 0);
-  case d8g:
-    printf(" {d8g}");
-    break;
-  case dr0g:
-    printf(" {dr0g)");
-    break;
 
   case Dn:  // [--Rn]
-    printf(" {Dn}@r%d", nb1);
+    printf(" @-r%d", nb1);
+    return mkmem(_Rn, 0, 0);
+  case Pn:  // [Rn++]
+    printf(" @r%d+", nb1);
     return mkmem(_Rn, 0, 0);
   case dn:  // [Rn]
-    printf(" {dn}@r%d", nb1);
+    printf(" @r%d", nb1);
     return mkmem(_Rn, 0, 0);
   case d4n: // [Rn+disp4]
     v = (op & 0xF) * 4;
@@ -148,10 +84,13 @@ static int getarg(struct cpu *cpu, int arg, int sz)
     return mkmem(R0, _Rn, 0);
 
   case Dm:  // [--Rm]
-    printf(" {Dm}[r%d]", nb0);
+    printf(" @-r%d", nb0);
+    return mkmem(_Rm, 0, 0);
+  case Pm:  // [Rm++]
+    printf(" @r%d+", nb0);
     return mkmem(_Rm, 0, 0);
   case dm:  // [Rm]
-    printf(" {dm}[r%d]", nb0);
+    printf(" @r%d", nb0);
     return mkmem(_Rm, 0, 0);
   case d4m: // [Rm+disp4]
     v = (op & 0xF) * 4;
@@ -165,6 +104,14 @@ static int getarg(struct cpu *cpu, int arg, int sz)
     printf(" {dm0}[r0+r%d]", nb0);
     return mkmem(R0, _Rm, 0);
 
+  case d8g:
+    printf(" {d8g}");
+    v = op & 0xFF;
+    return mkmem(rGBR, 0, v);
+  case dr0g:
+    printf(" {dr0g)");
+    v = op & 0xFF;
+    return mkmem(rGBR, R0, v);
   case d8p:
     if (sz == 'w') {
       v = ((op & 0xFF) * 2) + getoff(cpu);
@@ -291,7 +238,7 @@ struct opcode sh0000[16] = {
   _b(mov, dm0, Rn),  // [Rm+R0], Rn
   _w(mov, dm0, Rn),  // [Rm+R0], Rn
   _d(mov, dm0, Rn),  // [Rm+R0], Rn
-  __(mac, dm0, dn0), // [Rm++], [Rn++]
+  __(mac, Pm,  Pn),  // [Rm++], [Rn++]
 };
 
 /* 0010.xxxx.xxxx.xxxx */
@@ -371,7 +318,7 @@ struct opcode sh0100_0[16] = {
   [1] = __(dt,   Rn),
   [2] = __(shal, Rn),
   [8] = __(mul,  R0, Rn),
-  [15]= _d(movmu,Rm, Dr15),
+  [15]= _d(movmu,Rm, Pr15),
 };
 struct opcode sh0100_1[16] = {
   [0] = __(shlr,   Rn),
@@ -379,7 +326,7 @@ struct opcode sh0100_1[16] = {
   [2] = __(shar,   Rn),
   [8] = _b(clipu,  Rn),
   [9] = _b(clips,  Rn),
-  [15]= _d(movml,  Rm, Dr15),
+  [15]= _d(movml,  Rm, Pr15),
 };
 struct opcode sh0100_2[16] = {
   [0] = _d(sts, rMACH, Dn),  // [--Rn]
@@ -410,7 +357,7 @@ struct opcode sh0100_4[16] = {
   [2] = __(rotcl, Rn),
   [8] = __(divu,  R0, Rn),
   [9] = __(divs,  R0, Rn),
-  [15]= _d(movmu, Dr15, Rn),
+  [15]= _d(movmu, Pr15, Rn),
 };
 struct opcode sh0100_5[16] = {
   [0] = __(rotr, Rn),
@@ -419,35 +366,37 @@ struct opcode sh0100_5[16] = {
   [8] = _w(clipu, Rn),
   [9] = _w(clips, Rn),
   [14]= __(ldbank, dn, R0),
-  [15]= _d(movml, Dr15, Rn),
+  [15]= _d(movml, Pr15, Rn),
 };
+/* 0100.nnnn.oooo.0110 */
 struct opcode sh0100_6[16] = {
-  [0] = __(lds, Dn, rMACH),
-  [1] = __(lds, Dn, rMACL),
-  [2] = __(lds, Dn, rPR), 
-  [3] = __(lds, Dn, rSGR),
-  [5] = __(lds, Dn, rFPUL),
-  [6] = __(lds, Dn, rDSR), 
-  [7] = __(lds, Dn, rA0),
-  [8] = __(lds, Dn, rX0),
-  [9] = __(lds, Dn, rX1),
-  [10] = __(lds, Dn, rY0),
-  [11] = __(lds, Dn, rY1),
-  [15] = __(ldc, Dn, rDBR),
+  [0]  = __(lds, Pn, rMACH),
+  [1]  = __(lds, Pn, rMACL),
+  [2]  = __(lds, Pn, rPR), 
+  [3]  = __(lds, Pn, rSGR),
+  [5]  = __(lds, Pn, rFPUL),
+  [6]  = __(lds, Pn, rDSR), 
+  [7]  = __(lds, Pn, rA0),
+  [8]  = __(lds, Pn, rX0),
+  [9]  = __(lds, Pn, rX1),
+  [10] = __(lds, Pn, rY0),
+  [11] = __(lds, Pn, rY1),
+  [15] = __(ldc, Pn, rDBR),
 };
+/* 0100.nnnn.oooo.0111 */
 struct opcode sh0100_7[16] = {
-  [0] = __(ldc, Dn, rSR),
-  [1] = __(ldc, Dn, rGBR),
-  [2] = __(ldc, Dn, rVBR),
-  [3] = __(ldc, Dn, rSSR),
-  [4] = __(ldc, Dn, rSPC), 
-  [5] = __(ldc, Dn, rMOD), 
-  [6] = __(ldc, Dn, rRS), 
-  [7] = __(ldc, Dn, rRE),
+  [0] = __(ldc, Pn, rSR),
+  [1] = __(ldc, Pn, rGBR),
+  [2] = __(ldc, Pn, rVBR),
+  [3] = __(ldc, Pn, rSSR),
+  [4] = __(ldc, Pn, rSPC), 
+  [5] = __(ldc, Pn, rMOD), 
+  [6] = __(ldc, Pn, rRS), 
+  [7] = __(ldc, Pn, rRE),
 };
 struct opcode sh0100_8[16] = {
-  [0] = __(shll2, Rn),
-  [1] = __(shll8, Rn),
+  [0] = __(shll2,  Rn),
+  [1] = __(shll8,  Rn),
   [2] = __(shll16, Rn),
 };
 struct opcode sh0100_9[16] = {
@@ -455,8 +404,9 @@ struct opcode sh0100_9[16] = {
   [1] = __(shlr8, Rn),
   [2] = __(shlr16, Rn),
   [10]= __(movua,  dn, R0), // [Rm]
-  [14]= __(movua,  Dn, R0), // [Rm++]
+  [14]= __(movua,  Pn, R0), // [Rm++]
 };
+/* 0100.nnnn.oooo.1010 */
 struct opcode sh0100_a[16] = {
   [0] = __(lds, Rn, rMACH),
   [1] = __(lds, Rn, rMACL),
@@ -474,12 +424,12 @@ struct opcode sh0100_b[16] = {
   [1] = _b(tas, dn),
   [2] = __(jmp, dn),     // 0100nnnn00101011
   [4] = __(jsrn, dn),    // 0100nnnn01001011
-  [8] = _b(mov, R0, Dn), // [Rn++]
-  [9] = _w(mov, R0, Dn), // [Rn++]
-  [10]= _d(mov, R0, Dn), // [Rn++]
-  [12]= _b(mov, Dn, R0), // [--Rm]
-  [13]= _w(mov, Dn, R0), // [--Rm]
-  [14]= _d(mov, Dn, R0), // [--Rm]
+  [8] = _b(mov, R0, Pn), // [Rn++]
+  [9] = _w(mov, R0, Pn), // [Rn++]
+  [10]= _d(mov, R0, Pn), // [Rn++]
+  [12]= _b(mov, Dn, R0), // [--Rn]
+  [13]= _w(mov, Dn, R0), // [--Rn]
+  [14]= _d(mov, Dn, R0), // [--Rn]
 };
 struct opcode sh0100_e[16] = {
   __(ldc, Rm, rSR),
@@ -509,7 +459,7 @@ struct opcode sh0100[16] = {
   __(shad, Rm, Rn),
   __(shld, Rm, Rn),
   _t(sh0100_e, 0, 0xF),
-  _w(mac,  Dm, Dn),
+  _w(mac,  Pm, Pn),      // [Rm++],[Rn++]
 };
 
 /* 0110.xxxx.xxxx.xxxx */
@@ -518,9 +468,9 @@ struct opcode sh0110[16] = {
   _w(mov,   dm, Rn),
   _d(mov,   dm, Rn),
   __(mov,   Rm, Rn),
-  _b(mov,   Dm, Rn), // Rn=[Rm++]
-  _w(mov,   Dm, Rn), // Rn=[Rm++]
-  _d(mov,   Dm, Rn), // Rn=[Rm++]
+  _b(mov,   Pm, Rn), // Rn=[Rm++]
+  _w(mov,   Pm, Rn), // Rn=[Rm++]
+  _d(mov,   Pm, Rn), // Rn=[Rm++]
   __(not,   Rm, Rn),
   _b(swap,  Rm, Rn),
   _w(swap,  Rm, Rn),
@@ -776,19 +726,6 @@ static struct opcode *nxtSh(struct cpu *cpu, struct opcode *opc)
   return &opc->tbl[ib];
 }
 
-void showit(struct opcode *tbl, int n, int lvl)
-{
-  int i, j;
-
-  for (j=0; j<n; j++) {
-    if (tbl[j].tbl)
-      showit(tbl[j].tbl, tMASK(tbl[j].flag)+1, lvl+1);
-    else {
-      printf("@%s\n", tbl[j].mnem);
-    }
-  }
-}
-
 struct opcode *_dissh4(stack_t *stk, struct cpu *cpu)
 {
   struct opcode *opc, *noc;
@@ -796,12 +733,6 @@ struct opcode *_dissh4(stack_t *stk, struct cpu *cpu)
   int off, ib, sz;
   static int i1;
 
-  if (!i1) {
-    showit(shtab, 16, 0);
-    i1++;
-  }
-  exit(0);
-  
   off = getpc(cpu);
   cpu->op = _get16(cpu->pc);
   cpu->nb = 2;
