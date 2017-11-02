@@ -7,6 +7,7 @@ enum {
   Rn,
   FRm,
   FRn,
+  i3,
   i8,
   i20,
   Pr15, // [R15++]

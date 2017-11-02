@@ -46,6 +46,16 @@ enum {
 
   _r12 = TYPE_REG+12,
   _r13 = TYPE_REG+13,
+  _rPC = TYPE_REG+16,
+
+  _N = TYPE_CPUFLAG|0x1,
+  _L = TYPE_CPUFLAG|0x2,
+  _C = TYPE_CPUFLAG|0x4,
+  _F = TYPE_CPUFLAG|0x8,
+  _Z = TYPE_CPUFLAG|0x10,
+  
+  _ZL = _Z|_L,
+  _ZN = _Z|_N,
 };
 
 #endif

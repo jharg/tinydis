@@ -20,13 +20,14 @@ extern struct regval _regs[];
  * CR16 disassembly 
  *=========================================================================*/
 
-#define _(m,a...)      { .mnem=#m, .args = { a } }
+#define _(m,a...)       { .mnem=#m, .args = { a } }
 #define b(m,a...)       { .flag=SIZE_BYTE,  .mnem=#m "b", .args = { a } }
 #define w(m,a...)       { .flag=SIZE_WORD,  .mnem=#m "w", .args = { a } }
 #define d(m,a...)       { .flag=SIZE_HWORD, .mnem=#m "d", .args = { a } }
 #define jd(m,a...)      { .flag=SIZE_HWORD, .mnem=#m, .args = { a } }
 #define t(t,s,m,a...)   { .mnem=#t, .tbl=t, .args = { a }, .flag = mkTBL(s,m) }
 
+/* Sub-table opcodes (9 or 10-bit opcode) */
 // 0110.1010.0iii.BBBB
 // 0110.1010.10dd.BBBB dddd.dddd.-iii.dddd
 // 0110.1010.11dd.BBBB dddd.dddd.iiii.dddd
@@ -116,8 +117,8 @@ struct opcode jcc8[16] = {
   _(blo,j8), // <.u  (Z|L=0)
   _(bhs,j8), // >=.u (Z|L=1)
   _(blt,j8), // <.s  (Z|N=0)
-  _(bge,j8), // >=.s (Z|L=1)
-  _(br, j8),
+  _(bge,j8), // >=.s (Z|N=1)
+  _(br, j8), // always branch
   _(buc,j8),
 };
 
@@ -399,6 +400,9 @@ struct opcode crmap[] = {
   b(stor,r1,d4),b(stor,r1,d4),b(stor,r1,d0),b(stor,r1,d16,1),
 };
 
+/*===============================================================*
+ * CR16 registers
+ *===============================================================*/
 const char *crregw[] = { "r0", "r1", "r2", "r3",
 			 "r4", "r5", "r6", "r7",
 			 "r8", "r9", "r10", "r11",
@@ -453,7 +457,11 @@ const char *crargv(struct cpu *cpu, int arg, int sz, int off)
   return argstr;
 }
 
-/* Convert opcode arguments to common */
+/* Convert opcode arguments to common
+ *  TYPE_REG
+ *  TYPE_IMM
+ *  TYPE_IMMV
+ */
 int crop(struct cpu *cpu, int *arg, int sz)
 {
   uint32_t op = cpu->op;
@@ -471,7 +479,6 @@ int crop(struct cpu *cpu, int *arg, int sz)
     return mkreg(sz, a0, 0);
   case r1:
     return mkreg(sz, a1, 0);
-  case i3:
   case n3:
     return mkimm(cpu, SIZE_BYTE, (op >> 4) & 0x7);
   case n4:
@@ -533,7 +540,7 @@ int crop(struct cpu *cpu, int *arg, int sz)
     v =  a0;
     v |= (op & 0xF00) >> 4;
     if (v == 0x80) {
-      /* j16:format 22 */
+      /* j16:format 22 16-bit relative displacement */
       *arg = j16;
       v = _get16(cpu->pc+2);
       v = (int16_t)((v >> 1) | (v << 15)) << 1;
@@ -542,13 +549,14 @@ int crop(struct cpu *cpu, int *arg, int sz)
       return TYPE_JMP|SIZE_WORD;
     }
     else {
-      /* j8 */
+      /* j8 : 8-bit relative displacement */
       v = ((int8_t)v) << 1;
       cpu->immv = v + getpc(cpu);
       return TYPE_JMP|SIZE_BYTE;
     }
     break;
   case j24:
+    /* 24-bit relative displacement */
     cpu->immv = (op & 0xFF) << 16;
     cpu->immv |= _get16(cpu->pc+2);
     if (op & 0x80)
@@ -569,6 +577,7 @@ struct opcode *nxtCr(struct cpu *cpu, struct opcode *opc)
 {
   uint32_t ib;
 
+  /* Flag contains mask and bit offset of mnem index */
   ib = (_get32(cpu->pc) >> tSHIFT(opc->flag)) & tMASK(opc->flag);
   return &opc->tbl[ib];
 }
@@ -631,6 +640,8 @@ struct opcode *_discr16(stack_t *stk, struct cpu *cpu)
 
 /*=====================================================*
  * Cr16 emutab
+ *   mnemonic, hliop, dest, arg1, arg2, arg3
+ *     dest = arg1 op arg2 (op arg3)
  *=====================================================*/
 struct emutab cremutab[] = {
   { "andb", hliAND, _a1, _a0, _a1, 0 },
@@ -665,13 +676,13 @@ struct emutab cremutab[] = {
   { "subcw",hliSUB, _a1, _a0, _a1, rCF },
   { "subcd",hliSUB, _a1, _a0, _a1, rCF },
 
-  { "movb", hliASSIGN,_a1,_a0, 0, 0 },
-  { "movw", hliASSIGN,_a1,_a0, 0, 0 },
-  { "movd", hliASSIGN,_a1,_a0, 0, 0 },
-
   { "cmpb", hliSUB,   0, _a0, _a1, 0 },
   { "cmpw", hliSUB,   0, _a0, _a1, 0 },
   { "cmpd", hliSUB,   0, _a0, _a1, 0 },
+
+  { "movb", hliASSIGN,_a1,_a0, 0, 0 },
+  { "movw", hliASSIGN,_a1,_a0, 0, 0 },
+  { "movd", hliASSIGN,_a1,_a0, 0, 0 },
 
   { "storb",hliASSIGN,_a1,_a0, 0, 0  },
   { "storw",hliASSIGN,_a1,_a0, 0, 0  },
@@ -680,6 +691,26 @@ struct emutab cremutab[] = {
   { "loadb",hliASSIGN,_a1,_a0, 0, 0  },
   { "loadw",hliASSIGN,_a1,_a0, 0, 0  },
   { "loadd",hliASSIGN,_a1,_a0, 0, 0  },
+
+  /* Conditional jumps
+   *   mnem, hliJCC, cond, arg1, arg2
+   *    ip = cond ? arg1 : arg2;
+   */
+  { "beq",  hliJCC,   _Z, _a0, _rPC, 0 },
+  { "bne",  hliJCC,   _Z, _rPC, _a0, 0 },
+  { "bcs",  hliJCC,   _C, _a0, _rPC, 0 },
+  { "bcc",  hliJCC,   _C, _rPC, _a0, 0 },
+  { "bhi",  hliJCC,   _L, _a0, _rPC, 0 },
+  { "bls",  hliJCC,   _L, _rPC, _a0, 0 },
+  { "bgt",  hliJCC,   _N, _a0, _rPC, 0 },
+  { "ble",  hliJCC,   _N, _rPC, _a0, 0 },
+  { "bfs",  hliJCC,   _F, _a0, _rPC, 0 },
+  { "bfc",  hliJCC,   _F, _rPC, _a0, 0 },
+  { "blo",  hliJCC,   _ZL, _a0, _rPC, 0 },
+  { "bhs",  hliJCC,   _ZL, _rPC, _a0, 0 },
+  { "blt",  hliJCC,   _ZN, _a0, _rPC, 0 },
+  { "bge",  hliJCC,   _ZN, _rPC, _a0, 0 },
+  { "br",   hliJCC,  _i1, _a0, 0, 0 },
   { },
 };
 

@@ -59,6 +59,7 @@ static const char *st[] = {
   "lsl", "lsr", "asr", "ror", "rrx"
 };
 
+/* Condition code suffix */
 static const char *ccsfx[] = {
   "eq",
   "ne",
@@ -334,11 +335,11 @@ static struct opcode stc_ldc[] = {
   _t(ldc, _NBIT, 0x1),
 };
 
-/*==========================================*/
-/* 1110.OOOO.NNNN.DDDD.####.PPP0.MMMM cdp   */
-/* 1110.OOO0.NNNN.dddd.####.PPP1.MMMM mcr   */
-/* 1110.OOO1.NNNN.dddd.####.PPP1.MMMM mrc   */
-/*==========================================*/
+/*================================================================*/
+/* 1110.OOOO.NNNN.DDDD.####.PPP0.MMMM cdp   cdp_mcr[0]            */
+/* 1110.OOO0.NNNN.dddd.####.PPP1.MMMM mcr   cdp_mcr[1].mcr_mrc[0] */
+/* 1110.OOO1.NNNN.dddd.####.PPP1.MMMM mrc   cdp_mcr[1].mcr_mrc[1] */
+/*================================================================*/
 static struct opcode mcr_mrc[] = {
   __(mcr, MCr),
   __(mrc, MCr),

@@ -1821,8 +1821,8 @@ struct opcode opmap[] = {
 
   /* 0xc0 */
   TM(GRP2, Eb,Ib),  TM(GRP2, Ev,Ib),   _v(ret,Iw),        _v(ret),           _m(les, Gv, Mp),  _m(lds, Gv, Mp), _m(mov, Eb,Ib),   _m(mov,  Ev,Iz),
-  _v(enter,Iw,Ib),  _v(leave),         _v(retf,Iw),       _v(retf),          _x(int, i3),      _x(int,Ib),      _x(into),         _x(iret),
-  TM(GRP2, Eb,i1),  TM(GRP2, Ev,i1),   TM(GRP2,Eb,rCL),   TM(GRP2,Ev,rCL),   _x(aam, Ib),      _x(aad,Ib),      _x(salc),         _x(xlat),
+  _v(enter,Iw,Ib),  _v(leave),         _v(retf,Iw),       _v(retf),          _x(int,_i3),      _x(int,Ib),      _x(into),         _x(iret),
+  TM(GRP2, Eb,_i1), TM(GRP2, Ev,_i1),  TM(GRP2,Eb,rCL),   TM(GRP2,Ev,rCL),   _x(aam, Ib),      _x(aad,Ib),      _x(salc),         _x(xlat),
   t0(fpuD8),        t0(fpuD9),         t0(fpuDA),         t0(fpuDB),         t0(fpuDC),        t0(fpuDD),       t0(fpuDE),        t0(fpuDF),
 
   /* 0xe0 */
@@ -2940,7 +2940,7 @@ void checkhli_x86(struct imap *ci)
     sethli(ci, hliNEG, 2);
   }
   if (opeq(ci, "neg", 0, 0, 0) &&
-      opeq(ni, "adc", ni->opc->args[0], i0, 0) &&
+      opeq(ni, "adc", ni->opc->args[0],_i0, 0) &&
       opeq(ni, "neg", ni->opc->args[0], 0, 0)) {
     sethli(ci, hliNEG, 2);
   }
@@ -3581,8 +3581,8 @@ struct emutab x86emutab[] = {
   { "shl", hliSHL,   _a0, _a0, _a1, _a2 },
   { "shr", hliSHR,   _a0, _a0, _a1, _a2 },
   { "sar", hliSHR,   _a0, _a0, _a1, _a2 },
-  { "inc", hliADD,   _a0, _a0,  i1,  0 },
-  { "dec", hliSUB,   _a0, _a0,  i1,  0 },
+  { "inc", hliADD,   _a0, _a0, _i1,  0 },
+  { "dec", hliSUB,   _a0, _a0, _i1,  0 },
   { "mov", hliASSIGN,_a0, _a1,  0,   0 },
 
   { "movsb",hliASSIGN, _a0, _a1, 0, 0 },
@@ -3596,13 +3596,13 @@ struct emutab x86emutab[] = {
   { "scasb",hliSUB,    0,  _a0, _a1, _a2 },
   { "scasv",hliSUB,    0,  _a0, _a1, _a2 },
 
-  { "clc",  hliASSIGN, rCF, i0, 0, 1 },
-  { "stc",  hliASSIGN, rCF, i1, 0, 1 },
-  { "cmc",  hliXOR,    rCF, i1, 0, 1 },
-  { "cld",  hliASSIGN, rDF, i0, 0, 1 },
-  { "std",  hliASSIGN, rDF, i1, 0, 1 },
-  { "cli",  hliASSIGN, rIF, i0, 0, 1 },
-  { "sti",  hliASSIGN, rIF, i1, 0, 1 },
+  { "clc",  hliASSIGN, rCF,_i0, 0, 1 },
+  { "stc",  hliASSIGN, rCF,_i1, 0, 1 },
+  { "cmc",  hliXOR,    rCF,_i1, 0, 1 },
+  { "cld",  hliASSIGN, rDF,_i0, 0, 1 },
+  { "std",  hliASSIGN, rDF,_i1, 0, 1 },
+  { "cli",  hliASSIGN, rIF,_i0, 0, 1 },
+  { "sti",  hliASSIGN, rIF,_i1, 0, 1 },
 
   /* JCC: Arg0 = cond, Arg0 = True, Arg1 = False */
   { "jcxz", hliJCC,    0, rCX,     rvIP, _a0 },

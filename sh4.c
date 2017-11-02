@@ -52,6 +52,9 @@ static int getarg(struct cpu *cpu, int arg, int sz)
   case FRn:
     printf(" {FRn}Fr%d", nb1);
     return mkreg(SIZE_FLOAT, nb1, 0);
+  case i3:
+    printf(" {i3}%d", op & 0x7);
+    break;
   case i8:
     printf(" {i8}0x%x", op & 0xFF);
     return mkimm(cpu, SIZE_DWORD, op & 0xFF);
